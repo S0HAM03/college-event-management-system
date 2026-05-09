@@ -1,0 +1,57 @@
+/* style.css */
+
+/* 1. Base Settings */
+body {
+    font-family: 'Inter', sans-serif; /* You can change fonts here */
+    overflow-x: hidden; /* Prevents horizontal scrollbar */
+}
+
+/* 2. Custom Animation: Fade In Up */
+.fade-in {
+    animation: fadeInUp 0.8s ease-out forwards;
+    opacity: 0; /* Start invisible */
+}
+
+/* 3. Animation Keyframes */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px); /* Start 30px lower */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0); /* End at normal position */
+    }
+}
+
+/* 4. The "Selected Card" Effect (The Blue Glow) */
+.selected-card {
+    border-color: #3b82f6 !important; /* Tailwind Blue-500 */
+    border-width: 3px !important;
+    transform: scale(1.03); /* Grow slightly */
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.6); /* Blue glow */
+}
+
+/* 5. Glassmorphism (Frosted Glass Effect for the Form) */
+.glass-effect {
+    background: rgba(255, 255, 255, 0.05); /* Very transparent white */
+    backdrop-filter: blur(10px); /* The Blur magic */
+    -webkit-backdrop-filter: blur(10px); /* For Safari */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* 6. Scrollbar Styling (Optional: Makes it look techy) */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #111827; 
+}
+::-webkit-scrollbar-thumb {
+    background: #3b82f6; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #2563eb; 
+}

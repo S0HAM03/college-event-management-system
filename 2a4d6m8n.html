@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA 2.0 - Secure Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { 
+                    fontFamily: { sans: ['Inter', 'sans-serif'], orbitron: ['Orbitron', 'sans-serif'] },
+                    colors: { 'neon-purple': '#b026ff', 'neon-blue': '#00d4ff' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0f111a; color: white; }
+        .glass-panel { background: rgba(31, 41, 55, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        .login-box { background: rgba(17, 24, 39, 0.95); border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 50px rgba(59, 130, 246, 0.2); }
+        
+        /* --- TICKET STYLES --- */
+        .ticket-card {
+            background-color: #050505;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .ticket-accent-bar {
+            background: linear-gradient(180deg, #b026ff 0%, #00d4ff 100%);
+            box-shadow: 0 0 20px rgba(176, 38, 255, 0.5);
+        }
+        .glass-box {
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .text-glow { text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(0, 212, 255, 0.5); }
+        .id-glow { text-shadow: 0 0 15px rgba(176, 38, 255, 0.8); }
+        .verified-stamp {
+            border: 3px solid #4ade80;
+            color: #4ade80;
+            text-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.2) inset;
+            transform: rotate(-8deg);
+            background: rgba(0, 50, 0, 0.5);
+        }
+        td { white-space: nowrap; }
+    </style>
+</head>
+<body class="p-6 min-h-screen">
+
+    <div id="loginOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-[#0f111a]">
+        <div class="login-box p-8 rounded-2xl w-full max-w-md text-center">
+            <div class="mb-6 flex justify-center">
+                <div class="h-16 w-16 bg-blue-600/20 rounded-full flex items-center justify-center animate-pulse">
+                    <i class="fa-solid fa-lock text-3xl text-blue-500"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-orbitron font-bold text-white mb-2">Admin Access</h2>
+            <form id="loginForm" class="space-y-4 text-left mt-6">
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Email</label><input type="email" id="adminEmail" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white"></div>
+                <div><label class="text-xs font-bold text-gray-500 uppercase">Password</label><input type="password" id="adminPass" required class="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white"></div>
+                <button type="submit" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg mt-2">UNLOCK</button>
+            </form>
+            <p id="loginError" class="text-red-500 text-xs mt-4 hidden">Invalid Credentials</p>
+        </div>
+    </div>
+
+    <div id="dashboard" class="max-w-7xl mx-auto hidden fade-in">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+            <h1 class="text-3xl font-orbitron font-bold text-white">Event Database</h1>
+            <div class="flex gap-3 flex-wrap">
+                <button onclick="loadData()" class="bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700 hover:bg-gray-700 transition">Refresh</button>
+                <button onclick="exportToCSV()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2 rounded-lg font-bold transition">Export Excel</button>
+                <button onclick="logout()" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg transition"><i class="fa-solid fa-power-off"></i></button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass-panel p-5 rounded-xl border-l-4 border-blue-500"><p class="text-gray-400 text-xs uppercase font-bold">Total</p><p id="totalCount" class="text-3xl font-orbitron font-bold mt-1">0</p></div>
+            <div class="glass-panel p-5 rounded-xl border-l-4 border-green-500"><p class="text-gray-400 text-xs uppercase font-bold">Verified</p><p id="verifiedFees" class="text-3xl font-orbitron font-bold mt-1 text-green-400">₹0</p></div>
+            <div class="glass-panel p-5 rounded-xl border-l-4 border-yellow-500"><p class="text-gray-400 text-xs uppercase font-bold">Pending</p><p id="pendingCount" class="text-3xl font-orbitron font-bold mt-1 text-yellow-400">0</p></div>
+             <div class="glass-panel p-2 rounded-xl flex items-center">
+                <select id="eventFilter" onchange="filterData()" class="w-full bg-transparent text-white p-2 outline-none font-bold cursor-pointer">
+                    <option value="All" class="bg-gray-900">All Events</option>
+                    <option value="Bug Auction" class="bg-gray-900">Bug Auction</option>
+                    <option value="Tech Treasure Hunt" class="bg-gray-900">Tech Treasure Hunt</option>
+                    <option value="Court of chaos" class="bg-gray-900">Court of chaos</option>
+                    <option value="Treasure Hunt" class="bg-gray-900">Treasure Hunt</option>
+                    <option value="Prompt Showdown" class="bg-gray-900">Prompt Showdown</option>
+                    <option value="BGMI" class="bg-gray-900">BGMI</option>
+                    <option value="Free Fire" class="bg-gray-900">Free Fire</option>
+                    <option value="Box Cricket" class="bg-gray-900">Box Cricket</option>
+                    <option value="Project Competition" class="bg-gray-900">Project Comp</option>
+                    <option value="Talent Utsav" class="bg-gray-900">Talent Utsav</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-900/50 text-gray-400 text-xs uppercase tracking-wider border-b border-gray-700">
+                        <tr>
+                            <th class="p-5">Status</th>
+                            <th class="p-5">ID</th>
+                            <th class="p-5">Event</th>
+                            <th class="p-5">Txn ID</th>
+                            <th class="p-5">Team Name</th>
+                            <th class="p-5">Leader Name</th> 
+                            <th class="p-5">Fee</th>
+                            <th class="p-5 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-sm text-gray-300 divide-y divide-gray-800"></tbody>
+                </table>
+            </div>
+            <p id="loading" class="text-center p-8 text-gray-500 animate-pulse">Connecting...</p>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="glass-panel p-6 rounded-2xl w-full max-w-3xl border border-gray-600 shadow-2xl relative my-auto">
+            <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-3">
+                <h2 class="text-xl font-orbitron font-bold text-white">Edit Entry</h2>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <form id="editForm" onsubmit="saveEdit(event)" class="space-y-4">
+                <input type="hidden" id="editDocId">
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Team ID</label>
+                        <input type="text" id="editTeamId" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Event Name</label>
+                        <input type="text" id="editEvent" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Status</label>
+                        <select id="editStatus" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                            <option value="Pending">Pending</option>
+                            <option value="Verified">Verified</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Team Name</label>
+                        <input type="text" id="editTeamName" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Leader Name</label>
+                        <input type="text" id="editLeaderName" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Mobile</label>
+                        <input type="text" id="editMobile" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">College</label>
+                        <input type="text" id="editCollege" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-800 pt-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Transaction ID</label>
+                        <input type="text" id="editTxn" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Fee Amount</label>
+                        <input type="number" id="editFee" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm">
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-800 pt-4">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">All Members (Comma Separated)</label>
+                    <textarea id="editMembers" rows="2" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm mt-1"></textarea>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Member Emails (Comma Separated)</label>
+                    <textarea id="editEmails" rows="2" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-sm mt-1"></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-800">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition">Cancel</button>
+                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-bold transition">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="hiddenTicketContainer" style="position: fixed; left: -9999px; top: 0; z-index: -100;">
+        <div id="adminTicket" class="ticket-card w-[850px] h-[350px] rounded-3xl flex flex-row overflow-hidden">
+            
+            <div class="ticket-accent-bar w-4 h-full"></div>
+
+            <div class="p-10 flex-grow flex flex-col justify-between w-[65%] relative z-10">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900 text-blue-300 border border-blue-500 tracking-wider">OFFICIAL PASS</span>
+                        <span class="text-[10px] text-gray-400 font-bold tracking-widest uppercase">ACDS ASSOCIATION</span>
+                    </div>
+                    <h1 class="text-5xl font-black font-orbitron text-white text-glow tracking-wide mb-1">AURA 2.0</h1>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">TEAM ID</p>
+                        <h2 id="genId" class="text-6xl font-black font-orbitron text-white id-glow tracking-widest">...</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass-box rounded-lg p-3">
+                            <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">EVENT</p>
+                            <p id="genEvent" class="text-lg font-bold text-neon-blue font-orbitron truncate leading-normal pb-1">...</p>
+                        </div>
+                        <div class="glass-box rounded-lg p-3">
+                            <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">SCHEDULE</p>
+                            <p id="genDate" class="text-lg font-bold text-white font-orbitron truncate leading-normal pb-1">...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-[1px] h-full bg-gray-800 flex flex-col justify-center">
+                 <div class="w-[1px] h-[80%] bg-gray-700 mx-auto border-l border-dashed border-gray-600"></div>
+            </div>
+
+            <div class="w-[35%] p-8 flex flex-col justify-between items-center text-center relative z-10 bg-[#0a0a0a]">
+                <div class="mt-2">
+                     <p class="text-[10px] text-gray-500 font-bold uppercase mb-3 tracking-widest">REGISTRATION STATUS</p>
+                     <div class="verified-stamp px-8 py-2 rounded-lg text-3xl font-black font-orbitron uppercase transform -rotate-6">
+                         VERIFIED
+                     </div>
+                </div>
+
+                <div class="w-full mt-4">
+                    <div class="glass-box rounded-xl p-5 w-full border-t-2 border-blue-500 flex flex-col justify-center min-h-[100px]">
+                        <p class="text-[9px] text-gray-500 font-bold uppercase mb-2">PARTICIPANT / TEAM</p>
+                        <p id="genName" class="text-xl font-bold text-white truncate mb-2 leading-normal pb-2">...</p>
+                        <p id="genMobile" class="text-sm font-mono text-gray-400">...</p>
+                    </div>
+                </div>
+                
+                <p class="text-[9px] text-gray-700 font-mono mt-2">ID: <span class="text-gray-600">AURA-SECURE-TOKEN</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db } from './config.js';
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { collection, getDocs, doc, deleteDoc, updateDoc, query } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const eventSchedule = {
+            "Bug Auction":         "FEB 23 | 11:15 AM",  
+            "Tech Treasure Hunt":  "FEB 23 | 01:45 PM",  
+            "Court of chaos":      "FEB 23 | 03:00 PM",  
+            "Treasure Hunt":       "FEB 24 | 09:00 AM",
+            "Prompt Showdown":     "FEB 24 | 01:00 PM",
+            "BGMI":                "FEB 24 | 02:15 PM",
+            "Free Fire":           "FEB 24 | 03:00 PM",
+            "Box Cricket":         "FEB 25 | 09:00 AM",
+            "Project Competition": "FEB 25 | 10:00 AM",
+            "Talent Utsav":        "FEB 25 | 01:00 PM"   
+        };
+
+        const auth = getAuth();
+        let allData = [];
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('dashboard').classList.remove('hidden');
+                loadData();
+            } else {
+                document.getElementById('loginOverlay').classList.remove('hidden');
+                document.getElementById('dashboard').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try { await signInWithEmailAndPassword(auth, document.getElementById('adminEmail').value, document.getElementById('adminPass').value); }
+            catch (error) { document.getElementById('loginError').classList.remove('hidden'); }
+        });
+
+        window.logout = function() { signOut(auth).then(() => location.reload()); }
+
+        window.loadData = async function() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('tableBody').innerHTML = '';
+            try {
+                const q = query(collection(db, "registrations"));
+                const querySnapshot = await getDocs(q);
+                allData = [];
+                querySnapshot.forEach((doc) => { let item = doc.data(); item.id = doc.id; allData.push(item); });
+                allData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                document.getElementById('loading').style.display = 'none';
+                filterData();
+            } catch (error) { console.error(error); }
+        }
+
+        window.renderTable = function(dataToRender) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = "";
+            let verifiedTotal = 0, pendingTotal = 0;
+
+            dataToRender.forEach((data) => {
+                const status = data.status || "Pending"; 
+                if(status === "Verified") verifiedTotal += parseInt(data.feeAmount || 0);
+                if(status === "Pending") pendingTotal++;
+
+                let badgeColor = status === "Verified" ? "text-green-400 bg-green-900/30" : "text-yellow-400 bg-yellow-900/30";
+                const ticketBtn = status === 'Verified' ? `<button onclick="generateTicket('${data.id}')" class="text-blue-400 hover:bg-blue-900/30 px-3 py-1 rounded border border-blue-900 text-xs transition">Ticket</button>` : `<span class="text-gray-600">-</span>`;
+
+                tableBody.innerHTML += `
+                    <tr class="border-b border-gray-800 hover:bg-white/5">
+                        <td class="p-5"><span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${badgeColor}">${status}</span></td>
+                        <td class="p-5 font-mono text-yellow-500 font-bold text-xs">${data.teamId || '-'}</td>
+                        <td class="p-5 text-gray-300 font-bold text-xs">${data.event}</td>
+                        <td class="p-5 font-mono text-blue-300 font-bold text-xs select-all">${data.transactionId || '-'}</td>
+                        <td class="p-5 text-white font-bold text-xs">${data.teamName}</td>
+                        <td class="p-5 text-gray-400 text-xs">${data.leaderName}</td>
+                        <td class="p-5 text-green-400 font-mono text-xs">₹${data.feeAmount||0}</td>
+                        <td class="p-5 flex gap-2 items-center justify-end">
+                            ${ticketBtn}
+                            <button onclick="openEditModal('${data.id}')" title="Edit Entry" class="text-blue-500 p-2 hover:bg-blue-500/20 rounded transition"><i class="fa-solid fa-pen"></i></button>
+                            ${status!=='Verified' ? `<button onclick="updateStatus('${data.id}','Verified')" title="Verify" class="text-green-500 p-2 hover:bg-green-500/20 rounded transition"><i class="fa-solid fa-check"></i></button>`:''}
+                            <button onclick="deleteEntry('${data.id}')" title="Delete" class="text-red-500 p-2 hover:bg-red-500/20 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+            document.getElementById('totalCount').innerText = dataToRender.length;
+            document.getElementById('verifiedFees').innerText = "₹" + verifiedTotal;
+            document.getElementById('pendingCount').innerText = pendingTotal;
+        }
+
+        window.filterData = function() {
+            const val = document.getElementById('eventFilter').value;
+            renderTable(val === "All" ? allData : allData.filter(i => i.event === val));
+        }
+
+        window.updateStatus = async (id, status) => { if(confirm("Verify this payment?")) { await updateDoc(doc(db, "registrations", id), {status}); loadData(); } }
+        window.deleteEntry = async (id) => { if(confirm("Are you sure you want to delete this entry?")) { await deleteDoc(doc(db, "registrations", id)); loadData(); } }
+
+        // --- NEW MODAL EDIT LOGIC ---
+        window.openEditModal = function(id) {
+            const data = allData.find(x => x.id === id);
+            if(!data) return;
+
+            document.getElementById('editDocId').value = data.id;
+            document.getElementById('editTeamId').value = data.teamId || '';
+            document.getElementById('editEvent').value = data.event || '';
+            document.getElementById('editStatus').value = data.status || 'Pending';
+            document.getElementById('editTeamName').value = data.teamName || '';
+            document.getElementById('editLeaderName').value = data.leaderName || '';
+            document.getElementById('editMobile').value = data.mobile || '';
+            document.getElementById('editCollege').value = data.college || '';
+            document.getElementById('editTxn').value = data.transactionId || '';
+            document.getElementById('editFee').value = data.feeAmount || '';
+            document.getElementById('editMembers').value = data.members || '';
+            
+            // Format emails array to a comma separated string
+            let emailsStr = "";
+            if(data.memberEmails && Array.isArray(data.memberEmails)) {
+                emailsStr = data.memberEmails.join(', ');
+            } else if(data.email) {
+                emailsStr = data.email;
+            }
+            document.getElementById('editEmails').value = emailsStr;
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        window.closeEditModal = function() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        window.saveEdit = async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editDocId').value;
+            
+            // Parse emails back into an array
+            const emailString = document.getElementById('editEmails').value;
+            const emailsArray = emailString.split(',').map(s => s.trim()).filter(s => s !== "");
+
+            const updatedData = {
+                teamId: document.getElementById('editTeamId').value,
+                event: document.getElementById('editEvent').value,
+                status: document.getElementById('editStatus').value,
+                teamName: document.getElementById('editTeamName').value,
+                leaderName: document.getElementById('editLeaderName').value,
+                mobile: document.getElementById('editMobile').value,
+                college: document.getElementById('editCollege').value,
+                transactionId: document.getElementById('editTxn').value,
+                feeAmount: document.getElementById('editFee').value,
+                members: document.getElementById('editMembers').value,
+                memberEmails: emailsArray
+            };
+
+            try {
+                // Keep the 'email' string field updated for backwards compatibility if needed
+                if(emailsArray.length > 0) updatedData.email = emailsArray[0];
+
+                await updateDoc(doc(db, "registrations", id), updatedData);
+                closeEditModal();
+                loadData(); 
+            } catch (err) {
+                console.error(err);
+                alert("Error updating entry.");
+            }
+        }
+
+        window.exportToCSV = function() {
+            const filterValue = document.getElementById('eventFilter').value;
+            let dataToExport = filterValue === "All" ? allData : allData.filter(item => item.event === filterValue);
+            
+            if (dataToExport.length === 0) { alert("No data found to export."); return; }
+
+            let csv = "Team ID,Status,Event,Team Name,Role,Member Name,Member Email,College,Mobile,Fee,Transaction ID\n";
+            
+            dataToExport.forEach(item => {
+                let safeTeamId = item.teamId || 'PENDING';
+                let safeStatus = item.status || 'Pending';
+                let safeEvent = (item.event || "").replace(/,/g, " ");
+                let safeTeamName = (item.teamName || "").replace(/,/g, " ");
+                let safeMobile = item.mobile || "";
+                let safeFee = item.feeAmount || 0;
+                let safeTxn = item.transactionId || '-';
+                let safeCollege = `"${item.college || ''}"`;
+
+                let names = [];
+                if (item.members) {
+                    names = item.members.split(',').map(s => s.trim());
+                } else if (item.leaderName) {
+                    names = [item.leaderName];
+                }
+
+                let emails = [];
+                if (item.memberEmails && Array.isArray(item.memberEmails)) {
+                    emails = item.memberEmails;
+                } else if (item.email) {
+                    emails = [item.email];
+                }
+
+                let count = Math.max(names.length, emails.length);
+                for(let i=0; i<count; i++) {
+                    let role = (i === 0) ? "Leader" : "Member";
+                    let name = names[i] || "Unknown";
+                    let email = emails[i] || "-";
+
+                    csv += `${safeTeamId},${safeStatus},${safeEvent},${safeTeamName},${role},"${name}","${email}",${safeCollege},${safeMobile},${safeFee},${safeTxn}\n`;
+                }
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AURA_Export_Exploded_${filterValue.replace(/\s+/g, '_')}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        window.generateTicket = function(docId) {
+            const data = allData.find(x => x.id === docId);
+            if(!data) return;
+
+            document.getElementById('genId').innerText = data.teamId || "PENDING";
+            document.getElementById('genEvent').innerText = data.event;
+            document.getElementById('genName').innerText = (data.teamName === "Solo" ? data.leaderName : data.teamName);
+            document.getElementById('genMobile').innerText = data.mobile;
+            
+            const eventDate = eventSchedule[data.event] || "DATE TBA"; 
+            document.getElementById('genDate').innerText = eventDate;
+            
+            const ticketNode = document.getElementById('adminTicket');
+            html2canvas(ticketNode, { backgroundColor: "#050505", scale: 2 }).then(canvas => {
+                const link = document.createElement("a");
+                link.download = `TICKET_${data.teamId || 'NEW'}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
