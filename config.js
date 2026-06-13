@@ -2,15 +2,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// --- PASTE YOUR FIREBASE CONFIG HERE ---
+// Firebase configuration from environment variables
 const firebaseConfig = {
-  apiKey: "AIzaSyCo4tIpdTsgEKT9WD6EvGPql08uGY6fdeA",
-  authDomain: "aura-2-o.firebaseapp.com",
-  projectId: "aura-2-o",
-  storageBucket: "aura-2-o.firebasestorage.app",
-  messagingSenderId: "1037418507644",
-  appId: "1:1037418507644:web:7022eb35d18b247f5608f9",
-  measurementId: "G-3WD48R3WHJ"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ""
 };
 
 const app = initializeApp(firebaseConfig);
